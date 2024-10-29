@@ -1,0 +1,73 @@
+alias: Set Hue Light Color Temperature
+description: >
+  Sets a specific Hue light to the provided brightness and color temperature,
+  over a period of time. If the light is off, it will be set for the next time
+  it is turned on.
+fields:
+  light_entity:
+    description: The light entity to modify
+    example: light.living_room
+  temperature:
+    description: >-
+      2000-6535 value representing temperature. May also be the internal 500-153
+      value
+    example: 2800
+  transition_time:
+    description: Time to transition over
+    example: 5
+    default: 0
+sequence:
+  - variables:
+      entity: |
+        {% if light_entity is string %}
+          ["{{ light_entity }}"]
+        {% else %}
+          {{ light_entity }}
+        {% endif %}
+      temperature: |
+        {% set x = temperature | float %}
+          
+        {% if 2000 <= x <= 6535 %}
+          {% set slope = (153 - 500) / (6535 - 2000) %}
+          {% set y = 500 + (slope * (x - 2000)) %}
+          {{ y | round }}
+
+        {% elif 153 <= x <= 500 %}
+          {{ x | round }}
+
+        {% elif x < 153 %}
+          153
+
+        {% else %}
+          153
+        {% endif %}
+  - data:
+      title: Temp
+      message: Temp is {{ temperature }}
+    action: persistent_notification.create
+  - repeat:
+      for_each: "{{ entity }}"
+      sequence:
+        - data:
+            ieee: "{{ repeat.item }}"
+            cmd: 0
+            cluster: 8
+            endpoint: 11
+            args:
+              - "{{ brightness }}"
+              - "{{ transition_time }} "
+              - 1
+              - 1
+          action: zha_toolkit.zcl_cmd
+        - data:
+            ieee: "{{ repeat.item }}"
+            cmd: 10
+            cluster: 768
+            endpoint: 11
+            args:
+              - "{{ temperature }}"
+              - "{{ transition_time}}"
+              - 1
+              - 1
+          action: zha_toolkit.zcl_cmd
+mode: single

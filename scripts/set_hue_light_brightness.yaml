@@ -1,0 +1,38 @@
+alias: Set Hue Light Brightness
+description: >
+  Sets a specific Hue light to the provided brightness, over a period of time.
+  If the light is off, it will be set for the next time it is turned on.
+fields:
+  light_entity:
+    description: The light entity to modify
+    example: light.living_room
+  value:
+    description: 0-254 value representing brightness
+    example: 128
+  transition_time:
+    description: Time in seconds to transition over
+    example: 5
+    default: 0
+sequence:
+  - variables:
+      entity: |
+        {% if light_entity is string %}
+          ["{{ light_entity }}"]
+        {% else %}
+          {{ light_entity }}
+        {% endif %}
+  - repeat:
+      for_each: "{{ entity }}"
+      sequence:
+        - data:
+            ieee: "{{ repeat.item }}"
+            cmd: 0
+            cluster: 8
+            endpoint: 11
+            args:
+              - "{{ value }}"
+              - "{{ transition_time }} "
+              - 1
+              - 1
+          action: zha_toolkit.zcl_cmd
+mode: single

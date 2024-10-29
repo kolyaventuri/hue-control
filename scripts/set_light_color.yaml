@@ -1,0 +1,111 @@
+alias: Set Light Color
+description: >
+  Sets the light color based on one of the following inputs: - Hue & Saturation
+  - RGB - XY - Color Temperature
+mode: single
+variables:
+  hue: "{{ hue | default(None) }}"
+  saturation: "{{ saturation | default(None) }}"
+  red: "{{ red | default(None) }}"
+  green: "{{ green | default(None) }}"
+  blue: "{{ blue | default(None) }}"
+  x: "{{ x | default(None) }}"
+  "y": "{{ y | default(None) }}"
+  color_temp: "{{ color_temp | default(None) }}"
+  brightness: "{{ brightness }}"
+  light_entity: "{{ light_entity }}"
+  transition_time: "{{ (transition_time | default(0)) * 10 }}"
+sequence:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ hue is not none and saturation is not none }}"
+        sequence:
+          - data:
+              light_entity: "{{ light_entity }}"
+              hue: "{{ hue }}"
+              saturation: "{{ saturation }}"
+              brightness: "{{ brightness }}"
+              transition_time: "{{ transition_time }}"
+            action: script.set_hue_light_color_and_brightness
+      - conditions:
+          - condition: and
+            conditions:
+              - condition: template
+                value_template: "{{ red is not none }}"
+              - condition: template
+                value_template: "{{ green is not none }}"
+              - condition: template
+                value_template: "{{ blue is not none }}"
+        sequence:
+          - variables:
+              xy: >
+                {% set r = (red | float) / 255 %} {% set g = (green | float) /
+                255 %} {% set b = (blue | float) / 255 %}
+
+                {# Apply gamma correction #} {% set r_linear = r > 0.04045 and
+                ((r + 0.055) / 1.055) ** 2.4 or (r / 12.92) %} {% set g_linear =
+                g > 0.04045 and ((g + 0.055) / 1.055) ** 2.4 or (g / 12.92) %}
+                {% set b_linear = b > 0.04045 and ((b + 0.055) / 1.055) ** 2.4
+                or (b / 12.92) %}
+
+                {# Convert to XYZ using the sRGB color space matrix #} {% set X
+                = (0.4124 * r_linear + 0.3576 * g_linear + 0.1805 * b_linear) *
+                100 %} {% set Y = (0.2126 * r_linear + 0.7152 * g_linear +
+                0.0722 * b_linear) * 100 %} {% set Z = (0.0193 * r_linear +
+                0.1192 * g_linear + 0.9505 * b_linear) * 100 %}
+
+                {# Calculate x and y coordinates #} {% set sum_xyz = X + Y + Z
+                %} {% if sum_xyz == 0 %}
+                  [0, 0]
+                {% else %}
+                  [ {{ (X / sum_xyz) | round(4) }}, {{ (Y / sum_xyz) | round(4) }} ]
+                {% endif %}
+          - action: script.set_hue_light_xy_and_brightness
+            data:
+              x: "{{ xy[0] }}"
+              "y": "{{ xy[1] }}"
+              transition_time: "{{ transition_time }}"
+              brightness: "{{ brightness }}"
+              light_entity: "{{ light_entity }}"
+      - conditions:
+          - condition: template
+            value_template: "{{ color_temp is not none }}"
+        sequence:
+          - data:
+              light_entity: "{{ light_entity }}"
+              temperature: "{{ color_temp }}"
+              transition_time: "{{ transition_time }}"
+              brightness: "{{ brightness }}"
+            action: script.set_hue_light_color_temperature
+      - conditions:
+          - condition: and
+            conditions:
+              - condition: template
+                value_template: "{{ x is not none }}"
+              - condition: template
+                value_template: "{{ y is not none }}"
+        sequence:
+          - action: script.set_hue_light_xy_and_brightness
+            data:
+              x: "{{ x }}"
+              "y": "{{ y }}"
+              transition_time: "{{ transition_time }}"
+              brightness: "{{ brightness }}"
+              light_entity: "{{ light_entity }}"
+      - conditions:
+          - condition: template
+            value_template: "{{ brightness is not none }}"
+        sequence:
+          - action: script.set_hue_light_brightness
+            data:
+              light_entity: "{{ light_entity }}"
+              transition_time: "{{ transition_time }}"
+              brightness: "{{ brightness }}"
+    default:
+      - data:
+          title: Set Light Color - No Valid Input
+          message: >
+            Please provide one of the following inputs: - Hue & Saturation - RGB
+            (red, green, blue) - XY - Color Temperature
+        action: persistent_notification.create
