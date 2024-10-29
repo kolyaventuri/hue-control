@@ -8,7 +8,7 @@ Home Assistant scripts for fine control over Philips Hue bulbs
 - [zha_toolkit](https://github.com/mdeweerd/zha-toolkit)
 
 ## Note for HA `2024.9.x` and later
-There's a bug in zha_toolkit that prevents it from working with HA `2024.9.x` and later, that has not yet been fixed. Details can be found [here](https://github.com/mdeweerd/zha-toolkit/issues/261).
+There's a bug in zha_toolkit that _might_ prevent it from working with HA `2024.9.x` and later, that has not yet been fixed. Details can be found [here](https://github.com/mdeweerd/zha-toolkit/issues/261). Usually this only applies to reading ZHA attributes, not writing, but I make no guarantees.
 
 Until it is fixed, you can apply the `zha_toolkit_2024-09.patch` file, from the `~/config` directory via `git apply zha_toolkit_2024-09.patch`
 
